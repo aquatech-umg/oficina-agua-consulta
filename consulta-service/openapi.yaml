@@ -1,0 +1,111 @@
+openapi: 3.0.3
+info:
+  title: Servicio de Consulta Pública - Oficina del Agua
+  description: |
+    Servicio de solo lectura para que cualquier persona consulte el estado
+    de cuenta de un contador de agua, sin login ni registro.
+    Lee de la réplica de MySQL (no de la instancia del monolito).
+    El captcha y el límite de peticiones por IP se aplican antes de llegar
+    aquí (captcha en el BFF, AQ-88; límite por IP, AQ-108).
+  version: 0.1.0
+servers:
+  - url: http://localhost:8081
+    description: Desarrollo local
+tags:
+  - name: Consulta pública
+    description: Consulta de estado de cuenta por código de contador
+
+paths:
+  /api/v1/contadores/{codigo}/estado-cuenta:
+    get:
+      tags: [Consulta pública]
+      summary: Estado de cuenta de un contador
+      description: |
+        Devuelve el saldo pendiente y los recibos pendientes del contador
+        identificado por su número de registro (por ejemplo CONT-001).
+      operationId: obtenerEstadoCuenta
+      parameters:
+        - name: codigo
+          in: path
+          required: true
+          description: Número de registro del contador
+          schema:
+            type: string
+            maxLength: 50
+            example: CONT-001
+      responses:
+        '200':
+          description: Estado de cuenta encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoCuenta'
+        '400':
+          description: Código de contador con formato inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No existe un contador con ese código
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Demasiadas peticiones desde la misma IP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    EstadoCuenta:
+      type: object
+      required: [codigoContador, saldoPendiente, recibosPendientes]
+      properties:
+        codigoContador:
+          type: string
+          description: Número de registro del contador
+          example: CONT-001
+        direccionServicio:
+          type: string
+          example: 11 avenida 7-80, Jutiapa
+        sector:
+          type: string
+          nullable: true
+          example: Sector Norte
+        saldoPendiente:
+          type: number
+          format: double
+          description: Suma de los recibos pendientes, en quetzales (Q)
+          example: 85.50
+        recibosPendientes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReciboPendiente'
+    ReciboPendiente:
+      # Ajustar los campos a las columnas reales de la tabla recibos
+      type: object
+      required: [periodo, monto]
+      properties:
+        periodo:
+          type: string
+          description: Mes y año que cubre el recibo (AAAA-MM)
+          example: 2026-09
+        monto:
+          type: number
+          format: double
+          description: Monto del recibo en quetzales (Q)
+          example: 42.75
+    Error:
+      type: object
+      required: [codigo, mensaje]
+      properties:
+        codigo:
+          type: string
+          example: CONTADOR_NO_ENCONTRADO
+        mensaje:
+          type: string
+          example: No existe un contador con el código indicado
