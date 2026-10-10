@@ -86,14 +86,23 @@ components:
           items:
             $ref: '#/components/schemas/ReciboPendiente'
     ReciboPendiente:
-      # Ajustar los campos a las columnas reales de la tabla recibos
+      # Campos alineados con las columnas reales de la tabla recibos (AQ-87)
       type: object
-      required: [periodo, monto]
+      required: [numeroRecibo, periodo, fechaEmision, monto]
       properties:
+        numeroRecibo:
+          type: string
+          description: Número del recibo
+          example: REC-039001
         periodo:
           type: string
           description: Mes y año que cubre el recibo (AAAA-MM)
           example: 2026-09
+        fechaEmision:
+          type: string
+          format: date
+          description: Fecha de emisión del recibo (AAAA-MM-DD)
+          example: 2026-09-25
         monto:
           type: number
           format: double
