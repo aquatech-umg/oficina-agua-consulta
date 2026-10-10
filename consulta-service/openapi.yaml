@@ -9,7 +9,7 @@ info:
     aquí (captcha en el BFF, AQ-88; límite por IP, AQ-108).
   version: 0.1.0
 servers:
-  - url: http://localhost:8081
+  - url: http://localhost:8082
     description: Desarrollo local
 tags:
   - name: Consulta pública
