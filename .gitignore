@@ -1,0 +1,4 @@
+# Secretos: nunca se suben a Git
+.env
+.env.*
+!.env.example
