@@ -79,11 +79,15 @@ documentación de hCaptcha: agregar esta línea al archivo
 `C:\Windows\System32\drivers\etc\hosts` (requiere PowerShell como administrador):
 
 ```powershell
-Add-Content -Path C:\Windows\System32\drivers\etc\hosts -Value "127.0.0.1 test.mydomain.com"
+Add-Content -Path C:\Windows\System32\drivers\etc\hosts -Value "`n127.0.0.1 test.mydomain.com"
 ```
 
 y abrir la página por ese nombre, por ejemplo `http://test.mydomain.com:3000/consulta`.
 Se puede usar otro nombre en lugar de `test.mydomain.com`.
+
+El servidor de desarrollo de Next.js (web-bff) solo acepta peticiones de desarrollo desde los
+orígenes listados en `allowedDevOrigins` de `web-bff/next.config.ts` (en `oficina-agua-rag`).
+Ese archivo ya incluye `test.mydomain.com`; si usas otro nombre, agrégalo ahí también.
 
 ## Pruebas automáticas
 
