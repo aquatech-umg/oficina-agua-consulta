@@ -5,8 +5,8 @@ info:
     Servicio de solo lectura para que cualquier persona consulte el estado
     de cuenta de un contador de agua, sin login ni registro.
     Lee de la réplica de MySQL (no de la instancia del monolito).
-    El captcha y el límite de peticiones por IP se aplican antes de llegar
-    aquí (captcha en el BFF, AQ-88; límite por IP, AQ-108).
+    Este servicio verifica el token de hCaptcha (AQ-117) y limita las peticiones
+    por IP (AQ-108). El BFF muestra el widget y reenvía el token.
   version: 0.1.0
 servers:
   - url: http://localhost:8082
@@ -33,6 +33,14 @@ paths:
             type: string
             maxLength: 50
             example: CONT-001
+        - name: X-Captcha-Token
+          in: header
+          required: true
+          description: |
+            Token de hCaptcha que resolvió el visitante. Es de un solo uso:
+            hay que resolver un captcha nuevo en cada consulta.
+          schema:
+            type: string
       responses:
         '200':
           description: Estado de cuenta encontrado
@@ -46,6 +54,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Falta el token de captcha o hCaptcha lo rechazó (se evalúa después del límite por IP)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: No existe un contador con ese código
           content:
@@ -54,6 +68,12 @@ paths:
                 $ref: '#/components/schemas/Error'
         '429':
           description: Demasiadas peticiones desde la misma IP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: No se pudo verificar el captcha porque hCaptcha no responde; no se deja pasar a nadie
           content:
             application/json:
               schema:

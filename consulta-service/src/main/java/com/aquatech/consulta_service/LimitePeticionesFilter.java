@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -25,6 +26,7 @@ import jakarta.servlet.http.HttpServletResponse;
  * puede inventarlo, por eso el servicio no debe ser accesible desde internet.
  */
 @Component
+@Order(1)
 public class LimitePeticionesFilter extends OncePerRequestFilter {
 
     private static final int MAX_IPS_ANTES_DE_LIMPIAR = 10_000;
