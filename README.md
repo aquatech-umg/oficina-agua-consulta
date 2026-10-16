@@ -37,12 +37,11 @@ Encabezado obligatorio: `X-Captcha-Token` (token de hCaptcha, de un solo uso).
 Requisitos: Java 21 y la base encendida (`docker compose up -d` en `oficina-agua-infra`),
 con los datos de prueba de `datos-prueba/datos-prueba.sql`.
 
-El secret de hCaptcha se pasa por variable de entorno y nunca va en el repositorio. Sin
-`HCAPTCHA_SECRET` el servicio responde 503 a todas las consultas. Para pruebas locales:
-
+El secret de hCaptcha se pasa por variable de entorno y nunca va en el repositorio. Sin `HCAPTCHA_SECRET` el servicio responde 503 a todas las consultas, y sin `DB_PASSWORD` no arranca. Para pruebas locales:
 ```powershell
 cd consulta-service
 $env:HCAPTCHA_SECRET = "0x0000000000000000000000000000000000000000"
+$env:DB_PASSWORD = "<contraseña del usuario lectura de la réplica>"
 .\mvnw spring-boot:run
 ```
 
@@ -70,6 +69,33 @@ curl.exe -i -H "X-Captcha-Token: 10000000-aaaa-bbbb-cccc-000000000001" http://lo
 ```
 
 Con el secret de prueba, las dos primeras responden 403 y la tercera 200.
+
+## Imagen Docker
+
+Construir (desde la raíz del repositorio):
+
+```powershell
+docker build -t consulta-service:local ./consulta-service
+```
+
+Variables de entorno que recibe el contenedor:
+
+| Variable | Descripción |
+|---|---|
+| `HCAPTCHA_SITEKEY` | Clave pública de hCaptcha |
+| `HCAPTCHA_SECRET` | Clave secreta de hCaptcha. Sin ella el servicio responde 503 |
+| `DB_PASSWORD` | Contraseña del usuario `lectura` de la réplica. Obligatoria: sin ella el servicio no arranca |
+| `DB_HOST` | Host de la base de datos. Desde Docker en Windows/Mac se usa `host.docker.internal` |
+
+Copia `.env.example` a `.env` y agrega `DB_PASSWORD` (sin comillas). El `.env` no se sube al repositorio.
+
+Correr, con las bases de `oficina-agua-infra` levantadas:
+
+```powershell
+docker run --rm --name consulta-service -p 8082:8082 --env-file .env -e DB_HOST=host.docker.internal consulta-service:local
+```
+
+Para probar con las claves de prueba de la sección anterior, pásalas con `-e HCAPTCHA_SITEKEY=... -e HCAPTCHA_SECRET=...`: los `-e` tienen prioridad sobre el `.env`. Con las claves reales de hCaptcha el token de prueba da 403, porque solo valida con el secret de prueba.
 
 ## Probar el widget en local: entrada del archivo `hosts`
 
