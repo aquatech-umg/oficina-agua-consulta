@@ -84,3 +84,8 @@ Requiere una cuenta sin SCP sobre ECR, ECS y SSM. Región `us-east-1`. Docker de
 ## Demo local (respaldo)
 
 consulta-service en el puerto 8082 contra la réplica de `oficina-agua-infra`. Pruebas ya verificadas: sin `X-Captcha-Token` responde 403, con token falso 403 y con el token de prueba de hCaptcha 200.
+
+### Verificación del 20/10/2026
+
+- `consulta-service` se ejecutó en el puerto 8082 contra `db-replica` (con datos de prueba) y respondió `200` con el estado de cuenta de `CONT-001` usando el token y el secreto de prueba publicados por hCaptcha. Sin `X-Captcha-Token` y con token falso respondió `403`.
+- **Conflicto de puertos en Windows:** si hay una MariaDB instalada en el equipo y escucha en el 3307, `host.docker.internal:3307` llega a esa base y no a la réplica (síntoma: `500` con `Access denied for user 'lectura'@'localhost'`). Solución usada, sin tocar archivos de los repos: ejecutar el contenedor en la red del compose (`--network oficina-agua-infra_default`) con `DB_HOST=db-replica` y `DB_PORT=3306`.
