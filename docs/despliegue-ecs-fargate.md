@@ -20,11 +20,19 @@ Se probaron dos cuentas de AWS de plan gratuito, creadas desde aws.amazon.com, n
 | SSM | `DescribeParameters` | Denegado por SCP (primera cuenta) |
 | CloudWatch Logs | `DescribeLogGroups` | Permitido |
 
-Cada cuenta pertenece a una organización distinta, con su propia SCP. Una SCP la define el administrador de la organización y gana sobre cualquier permiso IAM, incluso con acceso total. No se intentó evadirla.
+Ambas cuentas tienen una SCP que niega esos servicios. Una SCP la define el administrador de una organización y gana sobre cualquier permiso IAM, incluso con acceso total. No se verificó si es la misma organización o distintas. No se intentó evadirla.
 
 Se desconoce quién administra esas organizaciones. Se consultó al equipo para saber si hay una vía oficial (cuenta con tarjeta, cuenta asignada por el docente u otra).
 
 **Cierre de seguridad:** la clave de acceso creada se desactivó y eliminó, se borró el archivo local de credenciales y `aws sts get-caller-identity` responde `NoCredentials`.
+
+### Actualización (20/10/2026)
+
+- **Comprobado:** un compañero del equipo probó en su propia cuenta de AWS y ahí sí se pueden crear repositorios en ECR y usar ECS. El bloqueo es de las dos cuentas probadas arriba, no del servicio.
+- **Hipótesis, no comprobada:** las dos cuentas sin tarjeta serían cuentas administradas por una organización externa, y por eso tienen la SCP. Es una suposición del equipo.
+- **Vía acordada con el equipo:** crear una tercera cuenta con correo personal por el registro normal de aws.amazon.com, con método de pago, plan gratuito y región us-east-1. Medidas previstas antes de crear recursos: MFA en el usuario root y presupuesto de gasto cero.
+- **Estado de la tercera cuenta:** creada, con el método de pago pendiente de verificación. AWS indica que la activación completa puede tardar hasta 24 horas. Aún no se ha probado ECR ni ECS.
+- **Si la cuenta se habilita:** la primera prueba es `aws ecr create-repository`. Si aparece otra SCP, se detiene el intento y se entrega el despliegue local con los pasos documentados.
 
 ## Decisiones acordadas
 
