@@ -1,9 +1,9 @@
-﻿# AQ-131: Despliegue de consulta-service en AWS ECS Fargate
+# AQ-131: Despliegue de consulta-service en AWS ECS Fargate
 
 - **Fecha:** 20 de octubre de 2026
 - **Responsable:** Pablo Mauricio López Carrillo
 - **Proyecto:** Consulta pública (AQ-78)
-- **Estado:** NO EJECUTADO. Bloqueado por políticas de la organización de AWS (ver Evidencia).
+- **Estado:** NO EJECUTADO en AWS. Las dos primeras cuentas tienen una SCP que niega ECR, ECS y SSM (ver Evidencia). La tercera cuenta, con método de pago, estaba pendiente de verificación al momento de la entrega. La demo local sí está verificada (ver Demo local).
 
 ## Contexto
 
