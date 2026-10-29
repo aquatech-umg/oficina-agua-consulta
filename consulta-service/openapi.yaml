@@ -23,6 +23,12 @@ paths:
       description: |
         Devuelve el saldo pendiente y los recibos pendientes del contador
         identificado por su número de registro (por ejemplo CONT-001).
+        Cada recibo incluye la mora y el total a pagar, calculados con la misma
+        regla que la pantalla de Pagos del monolito: el recibo vence el día 10
+        (del mismo mes si se emitió del 1 al 10, del mes siguiente si se emitió
+        después) y, pasado ese día, se cobra una sola vez la mora de su tarifa
+        (monto fijo + porcentaje del monto). El saldo pendiente suma los totales.
+        La fecha de referencia es la de hoy en la zona America/Guatemala.
       operationId: obtenerEstadoCuenta
       parameters:
         - name: codigo
@@ -87,7 +93,7 @@ components:
       properties:
         codigoContador:
           type: string
-          description: Número de registro del contador
+          description: Número de registro del contadoru
           example: CONT-001
         direccionServicio:
           type: string
@@ -96,19 +102,20 @@ components:
           type: string
           nullable: true
           example: Sector Norte
-        saldoPendiente:
+          saldoPendiente:
           type: number
           format: double
-          description: Suma de los recibos pendientes, en quetzales (Q)
-          example: 85.50
+          description: Suma de los totales (monto + mora) de los recibos pendientes, en quetzales (Q)
+          example: 198.00
         recibosPendientes:
           type: array
           items:
             $ref: '#/components/schemas/ReciboPendiente'
     ReciboPendiente:
-      # Campos alineados con las columnas reales de la tabla recibos (AQ-87)
+      # Campos alineados con las columnas reales de la tabla recibos (AQ-87);
+      # mora y total se calculan al consultar, como en el monolito (AQ-134)
       type: object
-      required: [numeroRecibo, periodo, fechaEmision, monto]
+      required: [numeroRecibo, periodo, fechaEmision, monto, mora, total]
       properties:
         numeroRecibo:
           type: string
@@ -126,8 +133,18 @@ components:
         monto:
           type: number
           format: double
-          description: Monto del recibo en quetzales (Q)
-          example: 42.75
+          description: Monto del recibo en quetzales (Q), sin mora
+          example: 180.00
+        mora:
+          type: number
+          format: double
+          description: Mora del recibo en quetzales (Q). Es 0.00 si el recibo no está vencido o su tarifa no define mora.
+          example: 18.00
+        total:
+          type: number
+          format: double
+          description: Total a pagar en quetzales (Q), monto más mora
+          example: 198.00
     Error:
       type: object
       required: [codigo, mensaje]

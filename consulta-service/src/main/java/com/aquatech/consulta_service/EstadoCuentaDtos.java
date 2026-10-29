@@ -21,7 +21,9 @@ public final class EstadoCuentaDtos {
             String numeroRecibo,
             String periodo,
             LocalDate fechaEmision,
-            BigDecimal monto) {
+            BigDecimal monto,
+            BigDecimal mora,
+            BigDecimal total) {
     }
 
     public record ErrorRespuesta(String codigo, String mensaje) {

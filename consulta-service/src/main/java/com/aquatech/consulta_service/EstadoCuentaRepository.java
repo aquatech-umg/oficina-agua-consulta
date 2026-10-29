@@ -1,6 +1,7 @@
 package com.aquatech.consulta_service;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
@@ -18,9 +19,11 @@ import com.aquatech.consulta_service.EstadoCuentaDtos.ReciboPendiente;
 public class EstadoCuentaRepository {
 
     private final JdbcClient jdbc;
+    private final Clock reloj;
 
-    public EstadoCuentaRepository(DataSource dataSource) {
+    public EstadoCuentaRepository(DataSource dataSource, Clock reloj) {
         this.jdbc = JdbcClient.create(dataSource);
+        this.reloj = reloj;
     }
 
     private record ContadorFila(long id, String codigo, String direccion, String sector) {
@@ -45,24 +48,40 @@ public class EstadoCuentaRepository {
         }
         ContadorFila c = contador.get();
 
+        LocalDate hoy = LocalDate.now(reloj);
+
         List<ReciboPendiente> recibos = jdbc.sql("""
-                SELECT r.numero_recibo, l.periodo, r.fecha_emision, r.monto
+                SELECT r.numero_recibo, l.periodo, r.fecha_emision, r.monto,
+                       t.mora_porcentaje, t.mora_monto_fijo
                 FROM recibos r
                 JOIN lecturas l ON l.id = r.lectura_id
+                LEFT JOIN tarifas t ON t.id = r.tarifa_id
                 WHERE l.contador_id = :contadorId
                   AND r.estado = 'PENDIENTE'
                 ORDER BY l.periodo
                 """)
                 .param("contadorId", c.id())
-                .query((rs, n) -> new ReciboPendiente(
-                        rs.getString("numero_recibo"),
-                        YearMonth.from(rs.getObject("periodo", LocalDate.class)).toString(),
-                        rs.getObject("fecha_emision", LocalDate.class),
-                        rs.getBigDecimal("monto")))
+                .query((rs, n) -> {
+                    LocalDate emision = rs.getObject("fecha_emision", LocalDate.class);
+                    BigDecimal monto = rs.getBigDecimal("monto");
+                    BigDecimal mora = CalculoMora.mora(
+                            monto,
+                            rs.getBigDecimal("mora_porcentaje"),
+                            rs.getBigDecimal("mora_monto_fijo"),
+                            emision,
+                            hoy);
+                    return new ReciboPendiente(
+                            rs.getString("numero_recibo"),
+                            YearMonth.from(rs.getObject("periodo", LocalDate.class)).toString(),
+                            emision,
+                            monto,
+                            mora,
+                            CalculoMora.total(monto, mora));
+                })
                 .list();
 
         BigDecimal saldo = recibos.stream()
-                .map(ReciboPendiente::monto)
+                .map(ReciboPendiente::total)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return Optional.of(new EstadoCuenta(c.codigo(), c.direccion(), c.sector(), saldo, recibos));
