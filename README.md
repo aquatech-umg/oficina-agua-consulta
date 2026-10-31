@@ -1,5 +1,5 @@
 Nombre: Pablo Mauricio López Carrillo
-Carnet: [COMPLETAR]
+Carnet: 0905-23-14811
 Repositorio: https://github.com/aquatech-umg/oficina-agua-consulta
 Modulo asignado: Consulta pública con captcha
 
@@ -103,21 +103,24 @@ Leyenda del diagrama: gris = HTTP/escritura; azul continua = replicación; azul 
 
 ## 3. Cómo se ejecuta la solución
 
-La base principal, la réplica y los scripts SQL (`db/`) están en `oficina-agua-infra`. Los datos de prueba de este módulo están en `datos-prueba/datos-prueba.sql`.
+**Infraestructura de datos** (`oficina-agua-infra`, archivo `docker-compose.yml`): levanta las dos bases del monolito.
+
+| Servicio | Imagen | Puerto | Función |
+|---|---|---|---|
+| `db-primary` | `mariadb:11.4` | `3306` | Base `oficina_agua` que lee y escribe el monolito; con log binario activado para replicar. Carga los scripts de `db/` al iniciar. |
+| `db-replica` | `mariadb:11.4` | `3307` | Réplica en modo `read-only`; se conecta a `db-primary` con el usuario de replicación. Los servicios nuevos leen de aquí con el usuario `lectura`. |
 
 ```powershell
-# 1. Infraestructura (db-primary en :3306 y db-replica en :3307)
 git clone https://github.com/aquatech-umg/oficina-agua-infra
 cd oficina-agua-infra
+copy .env.example .env      # completar credenciales localmente; .env no se sube a Git
 docker compose up -d
-
-# 2. Servicios de cada feature (cada uno en su repositorio, con su propio Dockerfile)
-#    oficina-agua-consulta, oficina-agua-rag, oficina-agua-pagos, oficina-agua-replicacion
+docker compose ps           # ambas bases deben quedar "healthy"
 ```
 
-> **[VERIFICAR]** Marvin preparó un `docker-compose.equipo.yml` que levanta el equipo completo. Confirma en qué repositorio quedó y si ya se fusionó; si existe, pon aquí su comando (`docker compose -f docker-compose.equipo.yml up -d --build`). Si no existe, deja solo el procedimiento de arriba.
+El compose define *healthchecks* (la réplica espera a que la principal esté sana y verifica que la replicación esté corriendo). Las credenciales (`DB_REPLICATION_USER`, `DB_REPLICATION_PASSWORD`, `DB_LECTURA_USER`, `DB_LECTURA_PASSWORD`, `DB_REPLICA_ROOT_PASSWORD`) se leen del `.env` local.
 
-El módulo de este README se levanta de forma independiente (sección 4.4). Los secretos se pasan por variables de entorno desde un `.env` local que **no** se versiona.
+**Servicios de cada feature.** Cada feature vive en su propio repositorio (`oficina-agua-consulta`, `oficina-agua-rag`, `oficina-agua-pagos`, `oficina-agua-replicacion`) y se conecta a `db-replica`. El procedimiento para levantar **mi módulo** (servicio y pantalla web) está en la sección 4.4.
 
 ---
 
@@ -148,7 +151,7 @@ Respuesta (200): `codigoContador`, `direccionServicio`, `sector`, `saldoPendient
 **Flujo**
 
 1. El ciudadano abre `/consulta` (`ConsultaForm.tsx`), escribe el código del contador y resuelve el hCaptcha (solo se usa la *sitekey* pública).
-2. La ruta del servidor `src/app/api/consulta/route.ts` (en `oficina-agua-rag/web-bff`) reenvía la petición a `consulta-service` con el token en `X-Captcha-Token` y la IP del visitante en `X-Forwarded-For`. **[VERIFICAR a qué URL/variable de entorno llama esa ruta]**
+2. La ruta del servidor `src/app/api/consulta/route.ts` (en `oficina-agua-rag/web-bff`) reenvía la petición a `consulta-service` (la URL base viene de la variable de entorno `CONSULTA_SERVICE_URL`) llamando a `/api/v1/contadores/{codigo}/estado-cuenta`, con el token en `X-Captcha-Token` y la IP del visitante en `X-Forwarded-For`.
 3. `LimitePeticionesFilter` (se evalúa primero) limita las peticiones por IP: 30 por ventana de 60 s por defecto (`consulta.limite.max-peticiones` y `consulta.limite.ventana-segundos`). La IP sale de `X-Forwarded-For`, que el BFF envía con la IP real del visitante. Si se supera: **429**.
 4. `CaptchaFilter` + `VerificadorCaptcha` (se evalúan después) validan el token contra `https://api.hcaptcha.com/siteverify` **en el servidor**, con el secret. Cada token sirve una sola vez. Si falla: **403**; si hCaptcha no responde: **503** (no se deja pasar a nadie).
 5. `EstadoCuentaController` → `EstadoCuentaRepository` leen la réplica.
@@ -213,7 +216,7 @@ Respuesta (200): `codigoContador`, `direccionServicio`, `sector`, `saldoPendient
 # A) Directo con Maven
 cd consulta-service
 $env:HCAPTCHA_SECRET = "<secret de prueba de la tabla>"
-$env:DB_PASSWORD = "<contraseña del usuario lectura de la réplica>"
+$env:DB_PASSWORD = "<DB_LECTURA_PASSWORD del .env de oficina-agua-infra>"
 .\mvnw spring-boot:run
 
 # B) Imagen Docker, en la red de la infraestructura
@@ -248,7 +251,14 @@ Con las claves reales de hCaptcha el token de prueba da 403: solo valida con el 
    ```powershell
    Add-Content -Path C:\Windows\System32\drivers\etc\hosts -Value "`n127.0.0.1 test.mydomain.com"
    ```
-2. Levanta el web-bff. **[VERIFICAR comando, probablemente `npm install` y `npm run dev` dentro de `oficina-agua-rag/web-bff`]**
+2. Levanta el web-bff (Next.js) apuntando al servicio:
+   ```powershell
+   cd oficina-agua-rag\web-bff
+   $env:CONSULTA_SERVICE_URL = "http://localhost:8082"
+   npm install
+   npm run dev
+   ```
+   La sitekey de hCaptcha del widget se configura en el web-bff (usa la sitekey de prueba de la tabla de arriba).
 3. Abre `http://test.mydomain.com:3000/consulta`, escribe `CONT-025` y resuelve el captcha.
 4. **Resultado esperado:** tabla de recibos con **Monto, Mora y Total a pagar**, y el saldo pendiente.
 
